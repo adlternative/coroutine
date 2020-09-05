@@ -1,7 +1,10 @@
 /**
  * @file    coroutine/frame.h
  * @author  github.com/luncliff (luncliff@gmail.com)
- * @brief   `<coroutine>` header with `std::` namespace/
+ * 
+ * @brief   Behave like `<coroutine>` header with `std::` namespace.
+ * @details If there is an existing <coroutine> header, 
+ *          then the file does nothing and redirected to the implementation.
  * @note    The implementation adjusts difference of coroutine frame between compilers
  * 
  * @see <experimental/resumable> from Microsoft VC++ (since 2017 Feb.)
@@ -14,6 +17,9 @@
  * @copyright CC BY 4.0
  */
 #pragma once
+#if __has_include(<coroutine>)
+#include <coroutine>
+#endif
 #ifndef _COROUTINE_
 #define _COROUTINE_
 

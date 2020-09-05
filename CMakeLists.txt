@@ -3,7 +3,7 @@
 #
 cmake_minimum_required(VERSION 3.12) # supports CXX_STANDARD 20
 project(coroutine	LANGUAGES   CXX 
-                    VERSION     1.5.1
+                    VERSION     2.0.0
 )
 if(NOT DEFINED BUILD_SHARED_LIBS)
     set(BUILD_SHARED_LIBS true)
@@ -11,7 +11,6 @@ endif()
 if(NOT DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-# set(CMAKE_CXX_STANDARD  20)
 
 message(STATUS "system: ${CMAKE_SYSTEM}")
 message(STATUS "build_type: ${CMAKE_BUILD_TYPE}")
@@ -33,21 +32,30 @@ message(STATUS " - ${CMAKE_GENERATOR}")
 message(STATUS " - ${CMAKE_BUILD_TOOL}")
 message(STATUS)
 
+
+
+
 #
 # import external libraries. see 'external/'
 #
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-find_package(Microsoft.GSL CONFIG)
-if(Microsoft.GSL_FOUND)
+find_package(Microsoft.GSL CONFIG) # microsoft/GSL v3.1.0
+if(FALSE)
     get_target_property(GSL_INCLUDE_DIR 
                         Microsoft.GSL::GSL INTERFACE_INCLUDE_DIRECTORIES)
 else()
     add_subdirectory(external/ms-gsl)
-    get_filename_component(GSL_INCLUDE_DIR 
-                           ${PROJECT_SOURCE_DIR}/external/ms-gsl/include ABSOLUTE)
+    if (NOT TARGET Microsoft.GSL::GSL)
+        message(FATAL_ERROR "expect target Microsoft.GSL::GSL")
+    endif()
+    get_target_property(GSL_INCLUDE_DIR 
+                        Microsoft.GSL::GSL INTERFACE_INCLUDE_DIRECTORIES)
 endif()
 message(STATUS "using ms-gsl: ${GSL_INCLUDE_DIR}")
 message(STATUS)
+
+
+
 
 #
 # Acquire informations about current build environment. Especially for Compiler & STL
@@ -89,7 +97,7 @@ elseif(MSVC)
     if(NOT has_coroutine)
         message(STATUS "Try <expeirmental/coroutine> (Coroutines TS) instead of <coroutine> ...")
         check_include_file_cxx("experimental/coroutine" has_coroutine_ts
-            "/std:c++17"
+            "/std:c++17" "/await"
         )
     endif()
     # has coroutine headers?
@@ -134,6 +142,9 @@ if(NOT support_intrinsic_builtin)
 endif()
 message(STATUS "supports __builtin_coro: ${support_intrinsic_builtin}")
 
+
+
+
 #
 # Known STL-Compiler issues
 #   - https://github.com/microsoft/STL, issue 100
@@ -142,10 +153,108 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Clang AND WIN32)
     message(WARNING "clang-cl won't work with <experimental/coroutine>")
 endif()
 
-set(MODULE_INTERFACE_DIR ${PROJECT_SOURCE_DIR}/interface)
-add_subdirectory(modules/portable)	# corotuien_portable
-add_subdirectory(modules/system)    # coroutine_system
-add_subdirectory(modules/net)       # coroutine_net
+
+
+
+add_library(coroutine_portable
+    interface/coroutine/frame.h
+    modules/portable/frame.cpp
+)
+
+set_target_properties(coroutine_portable
+PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS true
+)
+
+target_include_directories(coroutine_portable
+PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/interface>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
+)
+
+target_link_libraries(coroutine_portable
+PUBLIC
+    Microsoft.GSL::GSL
+)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
+    if(WIN32)
+        # 'target_compile_options' removes duplicated -Xclang directive.
+        # avoide the removal using cmake flag variable
+        target_compile_options(coroutine_portable
+        PUBLIC
+            "/clang:-fcoroutines-ts"
+            -fms-compatibility
+        )
+        # in this case, we always use portable header
+        target_compile_definitions(coroutine_portable
+        PUBLIC
+            _RESUMABLE_FUNCTIONS_SUPPORTED
+        PRIVATE
+            FORCE_CLANG
+        )
+
+    elseif(UNIX OR APPLE)
+        target_compile_options(coroutine_portable
+        PUBLIC
+            -std=c++2a -stdlib=libc++
+            -fcoroutines-ts
+        )
+    endif()
+
+elseif(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+    target_compile_options(coroutine_portable
+    PUBLIC
+        -std=gnu++2a
+        -fcoroutines -fconcepts # -fno-exceptions
+    )
+    target_link_libraries(coroutine_portable
+    PUBLIC
+        stdc++
+    )
+elseif(MSVC)
+    # select between C++ Coroutines TS & C++ 20 Coroutines
+    if(support_intrinsic_builtin AND has_coroutine)
+        target_compile_options(coroutine_portable
+        PUBLIC
+            /std:c++latest
+        )
+    else()
+        target_compile_options(coroutine_portable
+        PUBLIC
+            /std:c++17 /await
+        )
+    endif()
+    target_compile_options(coroutine_portable
+    PRIVATE
+        /JMC-
+    )
+endif()
+
+if(WIN32)
+elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+    if(ANDROID)
+        target_link_libraries(coroutine_portable
+        PUBLIC
+            ${ANDROID_STL}
+        )
+    else()
+        target_link_libraries(coroutine_portable
+        PUBLIC
+            stdc++
+        )
+    endif()
+
+elseif(UNIX OR APPLE)
+    target_link_libraries(coroutine_portable
+    PUBLIC
+        c++
+    )
+
+endif()
+
+# add_subdirectory(modules/system)    # coroutine_system
+# add_subdirectory(modules/net)       # coroutine_net
 
 install(FILES           ${MODULE_INTERFACE_DIR}/coroutine/frame.h
                         ${MODULE_INTERFACE_DIR}/coroutine/return.h
@@ -175,7 +284,7 @@ install(FILES			${MODULE_INTERFACE_DIR}/coroutine/net.h
         DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/coroutine
 )
 
-install(TARGETS     coroutine_portable coroutine_system coroutine_net
+install(TARGETS     coroutine_portable # coroutine_system coroutine_net
         EXPORT      coroutine-config
         INCLUDES    DESTINATION     ${CMAKE_INSTALL_PREFIX}/include
         RUNTIME     DESTINATION     ${CMAKE_INSTALL_PREFIX}/bin
@@ -223,10 +332,11 @@ enable_testing()
 
 # helper for test codes
 set(BUILD_TESTING OFF)
-add_subdirectory(external/latch)    
-add_subdirectory(external/sockets)
+set(BUILD_SHARED_LIBS OFF)
+add_subdirectory(external/latch)
+# add_subdirectory(external/sockets)
 
-set(CMAKE_CXX_STANDARD 20)
+# set(CMAKE_CXX_STANDARD 20)
 
 # create_ctest( ... )
 function(create_ctest TEST_NAME)
@@ -244,53 +354,31 @@ function(create_ctest TEST_NAME)
         PRIVATE
             ${ARGV${idx}} 
         )
-        if("${ARGV${idx}}" STREQUAL ssf)
-            target_include_directories(${TEST_NAME}
-            PRIVATE
-                ${PROJECT_SOURCE_DIR}/external/sockets
-            )    
-        endif()
     endforeach()
+    target_link_libraries(${TEST_NAME}
+    PRIVATE	
+        coroutine_portable
+    )
     if(WIN32)	
         target_compile_definitions(${TEST_NAME}	
         PRIVATE	
             WIN32_LEAN_AND_MEAN NOMINMAX	
         )
-    elseif(APPLE)	
-        target_link_libraries(${TEST_NAME}	
-        PRIVATE	
-            c++	
-        )	
-    else(CMAKE_SYSTEM_NAME MATCHES Linux)	
-        target_link_libraries(${TEST_NAME}
-        PRIVATE	
-            stdc++ c++
-        )	
     endif()
 endfunction()
-
-create_ctest( article_russian_roulette  coroutine_portable )
 
 #
 #   <coroutine/yield.hpp>
 #
-create_ctest( enumerable_accumulate     coroutine_portable )
-create_ctest( enumerable_iterator       coroutine_portable )
-create_ctest( enumerable_max_element    coroutine_portable )
-create_ctest( enumerable_move           coroutine_portable )
-create_ctest( enumerable_yield_never    coroutine_portable )
-create_ctest( enumerable_yield_once     coroutine_portable )
-create_ctest( enumerable_yield_rvalue   coroutine_portable )
-
-#
-#   <coroutine/frame.h>
-#   <coroutine/return.h>
-#
-create_ctest( return_destroy_with_handle  coroutine_portable )
-create_ctest( return_destroy_with_return  coroutine_portable )
-create_ctest( return_not_coroutine        coroutine_portable )
-create_ctest( return_not_subroutine       coroutine_portable )
-# create_ctest( return_std_future           coroutine_portable )
+if(TARGET coroutine_portable)
+    create_ctest( enumerable_accumulate     coroutine_portable )
+    create_ctest( enumerable_iterator       coroutine_portable )
+    create_ctest( enumerable_max_element    coroutine_portable )
+    create_ctest( enumerable_move           coroutine_portable )
+    create_ctest( enumerable_yield_never    coroutine_portable )
+    create_ctest( enumerable_yield_once     coroutine_portable )
+    create_ctest( enumerable_yield_rvalue   coroutine_portable )
+endif()
 
 #
 #   <coroutine/windows.h>
@@ -299,33 +387,33 @@ create_ctest( return_not_subroutine       coroutine_portable )
 #
 if(TARGET coroutine_system)
 if(WIN32)
-create_ctest( windows_event_set             coroutine_system )
-create_ctest( windows_event_cancel          coroutine_system )
-create_ctest( windows_event_wait_one        coroutine_system )
-create_ctest( windows_event_wait_multiple   coroutine_system )
-create_ctest( windows_on_apc_known          coroutine_system )
-create_ctest( windows_on_apc_self           coroutine_system )
-create_ctest( windows_on_thread_pool        coroutine_system latch )
+    create_ctest( windows_event_set             coroutine_system )
+    create_ctest( windows_event_cancel          coroutine_system )
+    create_ctest( windows_event_wait_one        coroutine_system )
+    create_ctest( windows_event_wait_multiple   coroutine_system )
+    create_ctest( windows_on_apc_known          coroutine_system )
+    create_ctest( windows_on_apc_self           coroutine_system )
+    create_ctest( windows_on_thread_pool        coroutine_system latch )
 
 elseif(UNIX)
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     # gcc-10 reports internal compiler error for these pthread tests
 else()
-create_ctest( pthread_detach_no_spawn       coroutine_system )
-create_ctest( pthread_detach_spawn          coroutine_system )
-create_ctest( pthread_join_no_spawn         coroutine_system )
-create_ctest( pthread_join_spawn_1          coroutine_system )
-create_ctest( pthread_join_spawn_2          coroutine_system )
+    create_ctest( pthread_detach_no_spawn       coroutine_system )
+    create_ctest( pthread_detach_spawn          coroutine_system )
+    create_ctest( pthread_join_no_spawn         coroutine_system )
+    create_ctest( pthread_join_spawn_1          coroutine_system )
+    create_ctest( pthread_join_spawn_2          coroutine_system )
 endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES Linux)
-create_ctest( linux_event_no_wait       coroutine_system )
-create_ctest( linux_event_wait          coroutine_system )
-create_ctest( linux_event_signal        coroutine_system )
+    create_ctest( linux_event_no_wait       coroutine_system )
+    create_ctest( linux_event_wait          coroutine_system )
+    create_ctest( linux_event_signal        coroutine_system )
 
 elseif(UNIX)
-create_ctest( unix_kqueue_single_thread  coroutine_system )
+    create_ctest( unix_kqueue_single_thread  coroutine_system )
 
 endif()
 endif()
@@ -337,33 +425,61 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     message(WARNING "using gcc: the compiler may not work for current code")
 endif()
-# create_ctest( channel_close_read            coroutine_system )
-# create_ctest( channel_close_write           coroutine_system )
-create_ctest( channel_ownership_consumer    coroutine_system )
-create_ctest( channel_ownership_producer    coroutine_system )
-create_ctest( channel_read_write_mutex      coroutine_system )
-create_ctest( channel_read_write_nolock     coroutine_system )
-create_ctest( channel_write_read_mutex      coroutine_system )
-create_ctest( channel_write_read_nolock     coroutine_system )
-# create_ctest( channel_select_empty          coroutine_system )
-# create_ctest( channel_select_type           coroutine_system )
+if(TARGET coroutine_system)
+    create_ctest( channel_close_read            coroutine_system )
+    create_ctest( channel_close_write           coroutine_system )
+    create_ctest( channel_ownership_consumer    coroutine_system )
+    create_ctest( channel_ownership_producer    coroutine_system )
+    create_ctest( channel_read_write_mutex      coroutine_system )
+    create_ctest( channel_read_write_nolock     coroutine_system )
+    create_ctest( channel_write_read_mutex      coroutine_system )
+    create_ctest( channel_write_read_nolock     coroutine_system )
+    create_ctest( channel_select_empty          coroutine_system )
+    create_ctest( channel_select_type           coroutine_system )
 if(WIN32)
-create_ctest( channel_race_condition        coroutine_system latch )
+    create_ctest( channel_race_condition        coroutine_system latch )
 endif()
-create_ctest( channel_sample_wrap           coroutine_system latch )
+    create_ctest( channel_sample_wrap           coroutine_system latch )
+endif()
 
 #
 #   <coroutine/net.h>
 #
 if(TARGET coroutine_net)
-create_ctest( net_socket_tcp_echo   coroutine_net ssf latch )
-create_ctest( net_socket_udp_echo   coroutine_net ssf latch )
-create_ctest( net_resolve_name      coroutine_net ssf )
-create_ctest( net_resolve_ip6       coroutine_net ssf )
-create_ctest( net_resolve_tcp6      coroutine_net ssf )
-create_ctest( net_resolve_udp6      coroutine_net ssf )
+    create_ctest( net_socket_tcp_echo   coroutine_net ssf latch )
+    create_ctest( net_socket_udp_echo   coroutine_net ssf latch )
+    create_ctest( net_resolve_name      coroutine_net ssf )
+    create_ctest( net_resolve_ip6       coroutine_net ssf )
+    create_ctest( net_resolve_tcp6      coroutine_net ssf )
+    create_ctest( net_resolve_udp6      coroutine_net ssf )
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
-    add_test(NAME test_clang_1 COMMAND ${CMAKE_CXX_COMPILER} --version)
+#
+# Try to compile the given source code and execute via ctest
+#
+function(try_compile_test TEST_NAME SOURCE_FILE)
+    add_executable(${TEST_NAME} ${SOURCE_FILE})
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    target_link_libraries(${TEST_NAME}
+    PRIVATE
+        coroutine_portable # PUBLIC compile options for <coroutine>
+                           # Currently <coroutine> samples are for latest MSVC
+    )
+    if(WIN32)	
+        target_compile_definitions(${TEST_NAME}	
+        PRIVATE	
+            WIN32_LEAN_AND_MEAN NOMINMAX	
+        )
+    endif()
+endfunction()
+
+if(has_coroutine_ts)
+    try_compile_test(sample_01 samples/russian_roulette.cpp)
+endif()
+
+if(has_coroutine)
+    try_compile_test(sample_02 samples/not_coroutine.cpp)
+    try_compile_test(sample_03 samples/not_subroutine.cpp)
+    try_compile_test(sample_04 samples/destroy_return.cpp)
+    try_compile_test(sample_05 samples/destroy_handle.cpp)
 endif()

@@ -1,5 +1,6 @@
-
 #include "coroutine/frame.h"
+#include <cstddef>
+#include <cstdint>
 // #include <experimental/coroutine>
 
 #if defined(__GNUC__)
@@ -77,30 +78,27 @@ size_t _coro_done(void*);
 //
 // intrinsic: Clang/GCC
 //
-//extern "C" {
+
 template <bool B>
-void resume_wrapper(void *p)
-{
+void resume_wrapper(void* p) {
     if constexpr (B)
         __builtin_coro_resume(p);
 }
 
 template <bool B>
-void destroy_wrapper(void *p)
-{
-    if constexpr(B)
+void destroy_wrapper(void* p) {
+    if constexpr (B)
         __builtin_coro_destroy(p);
 }
 
 template <bool B>
-bool done_wrapper(void *p)
-{
-    if constexpr(B)
+bool done_wrapper(void* p) {
+    if constexpr (B)
         return __builtin_coro_done(p);
     return false;
 }
-// void* __builtin_coro_promise(void* ptr, int align, bool p);
-//}
+
+struct portable_coro_prefix;
 
 bool _coro_finished(portable_coro_prefix* _Handle);
 
@@ -151,7 +149,7 @@ void portable_coro_resume(portable_coro_prefix* _Handle) {
     if constexpr (is_msvc) {
         _coro_resume(_Handle);
     } else if constexpr (is_clang) {
-       resume_wrapper<true>(_Handle); 
+        resume_wrapper<true>(_Handle);
     }
 }
 

@@ -6,9 +6,9 @@
  */
 #ifndef COROUTINE_YIELD_HPP
 #define COROUTINE_YIELD_HPP
-#include <iterator>
-
 #include <coroutine/return.h>
+#include <iterator>
+#include <stdexcept>
 
 namespace coro {
 
@@ -69,13 +69,19 @@ class enumerable {
     }
 
   public:
-    class promise_type final : public promise_aa {
+    class promise_type final {
         friend class iterator;
         friend class enumerable;
 
         pointer current = nullptr;
 
       public:
+        suspend_always initial_suspend() {
+            return {};
+        }
+        suspend_always final_suspend() {
+            return {};
+        }
         /**
          * @brief create coroutine handle from current promise's address
          */
@@ -84,7 +90,7 @@ class enumerable {
                 coroutine_handle<promise_type>::from_promise(*this)};
         }
         void unhandled_exception() noexcept(false) {
-            throw;
+            std::rethrow_exception(std::current_exception());
         }
         /// @brief  `co_yield` expression. for reference
         auto yield_value(reference ref) noexcept {
