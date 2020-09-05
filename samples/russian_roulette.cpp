@@ -1,14 +1,18 @@
-//
-//  Author  : github.com/luncliff (luncliff@gmail.com)
-//  License : CC BY 4.0
-//
+/**
+ * @author github.com/luncliff (luncliff@gmail.com)
+ * 
+ * @copyright CC BY 4.0
+ */
 #include <array>
+#include <gsl/gsl>
 #include <random>
 
-#include <gsl/gsl>
-
-#include <coroutine/return.h>
-
+#if __has_include(<coroutine>)
+#include <coroutine>
+#elif __has_include(<experimental/coroutine>)
+#include <experimental/coroutine>
+using namespace std::experimental;
+#endif
 using namespace std;
 
 class promise_manual_control {
@@ -133,7 +137,7 @@ auto russian_roulette(revolver_t& revolver, gsl::span<user_behavior_t> users) {
     }
 }
 
-int main(int, char* []) {
+int main(int, char*[]) {
     // select some chamber with the users
     array<user_behavior_t, 6> users{};
     revolver_t revolver{select_chamber(),

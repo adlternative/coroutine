@@ -4,7 +4,7 @@
 #undef NDEBUG
 #include <array>
 #include <cassert>
-
+#include <algorithm>
 #include <coroutine/yield.hpp>
 
 using namespace std;

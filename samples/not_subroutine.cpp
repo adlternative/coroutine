@@ -6,13 +6,13 @@
 #include <coroutine/return.h>
 
 #if defined(__GNUC__)
-using no_return_t = coro::null_frame_t;
+using coro::null_frame_t;
 #else
-using no_return_t = std::nullptr_t;
+using null_frame_t = std::nullptr_t;
 #endif
 
 // this is a coroutine
-auto invoke_and_forget_frame() -> no_return_t {
+auto invoke_and_forget_frame() -> null_frame_t {
     co_await std::suspend_never{};
     co_return;
 };

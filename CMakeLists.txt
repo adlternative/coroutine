@@ -126,22 +126,23 @@ if(NOT support_coroutine)
     message(FATAL_ERROR "The compiler doesn't support C++ Coroutines")
 endif()
 # support `__builtin_coro_*`?
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-get_filename_component(intrinsic_test_cpp
-                       test/support_intrinsic_builtin.cpp ABSOLUTE)
-try_compile(support_intrinsic_builtin ${CMAKE_BINARY_DIR}/supports
-    SOURCES         ${intrinsic_test_cpp}
-    # This is a workaround. for some reasone CMAKE_FLAGS has no effect.
-    # Instead, place the compiler option where macro definition are placed
-    COMPILE_DEFINITIONS ${try_compile_flags}    
-    CXX_STANDARD    20                          
-    OUTPUT_VARIABLE report
-)
-if(NOT support_intrinsic_builtin)
-    message(STATUS ${report})
+if(NOT DEFINED support_intrinsic_builtin)
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    get_filename_component(intrinsic_test_cpp
+                        compiler_test/__builtin.cpp ABSOLUTE)
+    try_compile(support_intrinsic_builtin ${CMAKE_BINARY_DIR}/supports
+        SOURCES         ${intrinsic_test_cpp}
+        # This is a workaround. for some reasone CMAKE_FLAGS has no effect.
+        # Instead, place the compiler option where macro definition are placed
+        COMPILE_DEFINITIONS ${try_compile_flags}    
+        CXX_STANDARD    20                          
+        OUTPUT_VARIABLE report
+    )
+    if(NOT support_intrinsic_builtin)
+        message(VERBOSE ${report})
+    endif()
+    message(STATUS "supports __builtin_coro: ${support_intrinsic_builtin}")
 endif()
-message(STATUS "supports __builtin_coro: ${support_intrinsic_builtin}")
-
 
 
 
@@ -157,8 +158,8 @@ endif()
 
 
 add_library(coroutine_portable
-    interface/coroutine/frame.h
-    modules/portable/frame.cpp
+    include/coroutine/frame.h
+    src/frame.cpp
 )
 
 set_target_properties(coroutine_portable
@@ -168,7 +169,7 @@ PROPERTIES
 
 target_include_directories(coroutine_portable
 PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/interface>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
 )
 
@@ -190,8 +191,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
         target_compile_definitions(coroutine_portable
         PUBLIC
             _RESUMABLE_FUNCTIONS_SUPPORTED
-        PRIVATE
-            FORCE_CLANG
         )
 
     elseif(UNIX OR APPLE)
@@ -256,37 +255,37 @@ endif()
 # add_subdirectory(modules/system)    # coroutine_system
 # add_subdirectory(modules/net)       # coroutine_net
 
-install(FILES           ${MODULE_INTERFACE_DIR}/coroutine/frame.h
-                        ${MODULE_INTERFACE_DIR}/coroutine/return.h
-                        ${MODULE_INTERFACE_DIR}/coroutine/channel.hpp
-                        ${MODULE_INTERFACE_DIR}/coroutine/yield.hpp
-        DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/coroutine
+install(FILES           include/coroutine/frame.h
+                        include/coroutine/return.h
+                        include/coroutine/channel.hpp
+                        include/coroutine/yield.hpp
+        DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
 )
 if(WIN32)
-    install(FILES       ${MODULE_INTERFACE_DIR}/coroutine/windows.h
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/coroutine
+    install(FILES       include/coroutine/windows.h
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
     )
 
 elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
-    install(FILES       ${MODULE_INTERFACE_DIR}/coroutine/linux.h
-                        ${MODULE_INTERFACE_DIR}/coroutine/pthread.h
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/coroutine
+    install(FILES       include/coroutine/linux.h
+                        include/coroutine/pthread.h
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
     )
 
 elseif(UNIX OR APPLE)
-    install(FILES       ${MODULE_INTERFACE_DIR}/coroutine/unix.h
-                        ${MODULE_INTERFACE_DIR}/coroutine/pthread.h
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/coroutine
+    install(FILES       include/coroutine/unix.h
+    include/coroutine/pthread.h
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
     )
 
 endif()
-install(FILES			${MODULE_INTERFACE_DIR}/coroutine/net.h
-        DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/coroutine
+install(FILES			include/coroutine/net.h
+        DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
 )
 
 install(TARGETS     coroutine_portable # coroutine_system coroutine_net
         EXPORT      coroutine-config
-        INCLUDES    DESTINATION     ${CMAKE_INSTALL_PREFIX}/include
+        # INCLUDES    DESTINATION     ${CMAKE_INSTALL_PREFIX}/include
         RUNTIME     DESTINATION     ${CMAKE_INSTALL_PREFIX}/bin
         LIBRARY     DESTINATION     ${CMAKE_INSTALL_PREFIX}/lib
         ARCHIVE     DESTINATION     ${CMAKE_INSTALL_PREFIX}/lib
@@ -336,31 +335,24 @@ set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(external/latch)
 # add_subdirectory(external/sockets)
 
-# set(CMAKE_CXX_STANDARD 20)
-
+#
 # create_ctest( ... )
+#
+#   See source files in 'test/'. All files in the filder will become test program.
+#   Arguments after TEST_NAME should be library (or CMake target) name
+#
 function(create_ctest TEST_NAME)
     # create a test exe with the given name ...
-    add_executable(${TEST_NAME} test/${TEST_NAME}.cpp)
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    target_link_libraries(${TEST_NAME}
-    PRIVATE
-        Microsoft.GSL::GSL
-    )
-    # all arguments after TEST_NAME 
-    # should be library (or CMake target) name
+    add_executable(test_${TEST_NAME} test/${TEST_NAME}.cpp)
+    add_test(NAME ${TEST_NAME} COMMAND test_${TEST_NAME})
     foreach(idx RANGE 1 ${ARGC})
-        target_link_libraries(${TEST_NAME}
+        target_link_libraries(test_${TEST_NAME}
         PRIVATE
             ${ARGV${idx}} 
         )
     endforeach()
-    target_link_libraries(${TEST_NAME}
-    PRIVATE	
-        coroutine_portable
-    )
     if(WIN32)	
-        target_compile_definitions(${TEST_NAME}	
+        target_compile_definitions(test_${TEST_NAME}	
         PRIVATE	
             WIN32_LEAN_AND_MEAN NOMINMAX	
         )
@@ -373,7 +365,6 @@ endfunction()
 if(TARGET coroutine_portable)
     create_ctest( enumerable_accumulate     coroutine_portable )
     create_ctest( enumerable_iterator       coroutine_portable )
-    create_ctest( enumerable_max_element    coroutine_portable )
     create_ctest( enumerable_move           coroutine_portable )
     create_ctest( enumerable_yield_never    coroutine_portable )
     create_ctest( enumerable_yield_once     coroutine_portable )
@@ -457,7 +448,7 @@ endif()
 #
 # Try to compile the given source code and execute via ctest
 #
-function(try_compile_test TEST_NAME SOURCE_FILE)
+function(basic_sample TEST_NAME SOURCE_FILE)
     add_executable(${TEST_NAME} ${SOURCE_FILE})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     target_link_libraries(${TEST_NAME}
@@ -474,12 +465,15 @@ function(try_compile_test TEST_NAME SOURCE_FILE)
 endfunction()
 
 if(has_coroutine_ts)
-    try_compile_test(sample_01 samples/russian_roulette.cpp)
+    # ...
 endif()
+if(has_coroutine)    
+    basic_sample(sample_02 samples/not_coroutine.cpp)
+    basic_sample(sample_03 samples/not_subroutine.cpp)
+    basic_sample(sample_04 samples/destroy_return.cpp)
+    basic_sample(sample_05 samples/destroy_handle.cpp)
 
-if(has_coroutine)
-    try_compile_test(sample_02 samples/not_coroutine.cpp)
-    try_compile_test(sample_03 samples/not_subroutine.cpp)
-    try_compile_test(sample_04 samples/destroy_return.cpp)
-    try_compile_test(sample_05 samples/destroy_handle.cpp)
+    basic_sample(sample_11 samples/russian_roulette.cpp)
+    basic_sample(sample_12 samples/max_element.cpp)
+
 endif()
