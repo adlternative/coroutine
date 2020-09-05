@@ -19,8 +19,11 @@
 #pragma once
 #if __has_include(<coroutine>)
 #include <coroutine>
+#if !defined(_MSC_VER)
+#define _COROUTINE_ // suppress following implementation
 #endif
-#ifndef _COROUTINE_
+#endif
+#ifndef _COROUTINE_ // the value is from Microsoft/STL
 #define _COROUTINE_
 
 // suppress <experimental/resumable>

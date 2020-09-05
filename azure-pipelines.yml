@@ -9,60 +9,77 @@
 #
 
 jobs:
-  - job: vs2017_cmake_vs_msvc141
+  - job: vs2017_cmake_msvc141
     pool:
       vmImage: "vs2017-win2016"
     variables:
       platform: x64
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-win-vs.yml
         parameters:
           toolset: v141
 
-  - job: vs2019_cmake_vs_msvc142
+  - job: vs2019_cmake_msvc142
     pool:
       vmImage: "windows-2019"
     variables:
       platform: x64
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-win-vs.yml
         parameters:
           toolset: v142
 
-  - job: vs2017_cmake_ninja_clang8
+  - job: vs2017_cmake_clang8
     pool:
       vmImage: "vs2017-win2016"
     variables:
       visualstudio: 2017
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-win-llvm.yml
         parameters:
           llvm_version: "8.0.1"
 
-  - job: vs2019_cmake_ninja_clang8
+  - job: vs2019_cmake_clang8
     pool:
       vmImage: windows-2019
     variables:
       visualstudio: 2019
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-win-llvm.yml
         parameters:
           llvm_version: "8.0.1"
+
+  - job: vs2019_cmake_clang9
+    pool:
+      vmImage: windows-2019
+    variables:
+      visualstudio: 2019
+      configuration: Debug
+    steps:
+      - template: azure/steps-win-llvm.yml
+        parameters:
+          llvm_version: "9.0.1"
+
+  - job: vs2019_cmake_clang10
+    pool:
+      vmImage: windows-2019
+    variables:
+      visualstudio: 2019
+      configuration: Debug
+    steps:
+      - template: azure/steps-win-llvm.yml
+        parameters:
+          llvm_version: "10.0.0"
 
   - job: ubuntu_cmake_clang8
     pool:
       vmImage: "ubuntu-latest"
     variables:
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-ubuntu.yml
         parameters:
@@ -75,7 +92,6 @@ jobs:
       vmImage: "macos-latest"
     variables:
       configuration: Debug
-      is_dynamic: True
     steps:
       - template: azure/steps-mac.yml
         parameters:

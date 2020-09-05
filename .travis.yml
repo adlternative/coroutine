@@ -24,6 +24,7 @@ addons:
       - doxygen
       - tree
       - tar
+      - rsync
 
 language: cpp
 
@@ -33,7 +34,7 @@ install:
   - if [ ${TRAVIS_OS_NAME} == "linux" ]; then
     sudo rm -rf /usr/local/clang* /usr/local/cmake*;
     sudo bash ./scripts/setup-compilers-ubuntu.sh > /dev/null;
-    sudo bash ./scripts/install-cmake-3.sh > /dev/null;
+    sudo bash ./scripts/install-cmake-3.sh 3.16.8 > /dev/null;
     CC=gcc-9 CXX=g++-9 sudo bash ./scripts/install-libcxx.sh release_90;
     fi
   - if [ ${TRAVIS_OS_NAME} == "osx" ]; then
@@ -72,13 +73,14 @@ after_success:
 
 jobs:
   allow_failures:
-    - osx_image: xcode10.1
+    - osx_image: xcode10.1  # requires higher clang version
+    - compiler: clang-7
     - compiler: clang-10
 
   include:
     - stage: build
       os: osx # 10.13
-      osx_image: xcode10.1 # requires higher clang version
+      osx_image: xcode10.1
       compiler: clang
 
     - os: osx # 10.14.6
@@ -97,11 +99,15 @@ jobs:
       #     # we don't have to cache if already installed
       #     - /usr/local/Cellar/gcc/
       install:
-        - brew info gcc # 10.1.0 is already installed
         # - travis_wait 90 brew upgrade gcc@10
+        - brew info gcc # 10.1.0 is already installed
 
     - os: linux
       dist: xenial # 16.04
+      compiler: clang-7
+
+    - os: linux
+      dist: xenial
       compiler: clang-8
 
     - os: linux

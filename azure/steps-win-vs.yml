@@ -17,7 +17,7 @@ steps:
 
   - task: CMake@1
     inputs:
-      cmakeArgs: . -A $(platform) -DBUILD_SHARED_LIBS=$(is_dynamic)
+      cmakeArgs: . -A $(platform) -DBUILD_SHARED_LIBS=True
       workingDirectory: "."
 
   - task: MSBuild@1

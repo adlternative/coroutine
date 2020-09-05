@@ -11,6 +11,7 @@ echo "os-release: ${verion_name}"
 echo "compilers:"
 echo " - g++-8"
 echo " - g++-9"
+echo " - clang-7"
 echo " - clang-8"
 echo " - clang-9"
 echo " - clang-10 (18.04+)"
@@ -27,6 +28,7 @@ apt-add-repository -y ppa:ubuntu-toolchain-r/test
 # http://apt.llvm.org/
 # This library will use clang up to 'qualification branch'
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+apt-add-repository "deb http://apt.llvm.org/${distribution}/ llvm-toolchain-${distribution}-7 main"
 apt-add-repository "deb http://apt.llvm.org/${distribution}/ llvm-toolchain-${distribution}-8 main"
 apt-add-repository "deb http://apt.llvm.org/${distribution}/ llvm-toolchain-${distribution}-9 main"
 if [[ ${version_id} == "18.04" ]]; then
@@ -35,14 +37,18 @@ fi
 
 apt update -qq
 apt install -y -q \
-  g++-8 g++-9 clang-8 clang-9
+  g++-8 g++-9 clang-7 clang-8 clang-9
 
 if [[ ${version_id} == "18.04" ]]; then
   apt install -y -q clang-10;
 fi
 
 pushd /usr/bin
-ln -s --force gcc-9 gcc
-ln -s --force g++-9 g++
-ln -s --force clang-9 clang
+  ln -s --force gcc-9 gcc
+  ln -s --force g++-9 g++
+  if [[ ${version_id} == "18.04" ]]; then
+    ln -s --force clang-10 clang
+  else
+    ln -s --force clang-9 clang
+  fi
 popd

@@ -19,7 +19,7 @@ steps:
 
   - task: CMake@1
     inputs:
-      cmakeArgs: .. -DBUILD_SHARED_LIBS=$(is_dynamic) -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_INSTALL_PREFIX=${{ parameters.cmake_install_dir }}
+      cmakeArgs: .. -DBUILD_SHARED_LIBS=True -DCMAKE_BUILD_TYPE=$(configuration) -DCMAKE_INSTALL_PREFIX=${{ parameters.cmake_install_dir }}
       workingDirectory: ${{ parameters.cmake_work_dir }}
 
   - task: CMake@1

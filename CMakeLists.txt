@@ -2,7 +2,7 @@
 #   github.com/luncliff (luncliff@gmail.com)
 #
 cmake_minimum_required(VERSION 3.12) # supports CXX_STANDARD 20
-project(coroutine	LANGUAGES   CXX 
+project(coroutine   LANGUAGES   CXX 
                     VERSION     2.0.0
 )
 if(NOT DEFINED BUILD_SHARED_LIBS)
@@ -11,6 +11,7 @@ endif()
 if(NOT DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
+set(CMAKE_CXX_STANDARD 20)
 
 message(STATUS "system: ${CMAKE_SYSTEM}")
 message(STATUS "build_type: ${CMAKE_BUILD_TYPE}")
@@ -185,7 +186,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
         target_compile_options(coroutine_portable
         PUBLIC
             "/clang:-fcoroutines-ts"
-            -fms-compatibility
+            -fms-compatibility /std:c++17
         )
         # in this case, we always use portable header
         target_compile_definitions(coroutine_portable
@@ -265,6 +266,9 @@ if(WIN32)
     install(FILES       include/coroutine/windows.h
             DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
     )
+    install(FILES       $<TARGET_PDB_FILE:coroutine_portable>
+            DESTINATION bin
+    )
 
 elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
     install(FILES       include/coroutine/linux.h
@@ -279,7 +283,7 @@ elseif(UNIX OR APPLE)
     )
 
 endif()
-install(FILES			include/coroutine/net.h
+install(FILES           include/coroutine/net.h
         DESTINATION     ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
 )
 
@@ -351,10 +355,15 @@ function(create_ctest TEST_NAME)
             ${ARGV${idx}} 
         )
     endforeach()
-    if(WIN32)	
-        target_compile_definitions(test_${TEST_NAME}	
-        PRIVATE	
-            WIN32_LEAN_AND_MEAN NOMINMAX	
+    if(WIN32)
+        target_compile_definitions(test_${TEST_NAME}
+        PRIVATE
+            WIN32_LEAN_AND_MEAN NOMINMAX
+        )
+    elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+        target_link_libraries(test_${TEST_NAME}
+        PUBLIC
+            stdc++ c++
         )
     endif()
 endfunction()
@@ -456,18 +465,15 @@ function(basic_sample TEST_NAME SOURCE_FILE)
         coroutine_portable # PUBLIC compile options for <coroutine>
                            # Currently <coroutine> samples are for latest MSVC
     )
-    if(WIN32)	
-        target_compile_definitions(${TEST_NAME}	
-        PRIVATE	
-            WIN32_LEAN_AND_MEAN NOMINMAX	
+    if(WIN32)
+        target_compile_definitions(${TEST_NAME}
+        PRIVATE
+            WIN32_LEAN_AND_MEAN NOMINMAX
         )
     endif()
 endfunction()
 
-if(has_coroutine_ts)
-    # ...
-endif()
-if(has_coroutine)    
+if(has_coroutine_ts OR has_coroutine)
     basic_sample(sample_02 samples/not_coroutine.cpp)
     basic_sample(sample_03 samples/not_subroutine.cpp)
     basic_sample(sample_04 samples/destroy_return.cpp)

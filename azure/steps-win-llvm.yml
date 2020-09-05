@@ -26,5 +26,4 @@ steps:
     inputs:
       filename: "./scripts/build-vs$(visualstudio)-cmake-clang.bat"
     env:
-      SHARED: $(is_dynamic)
       BUILD_TYPE: $(configuration)

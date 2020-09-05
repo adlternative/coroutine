@@ -1,21 +1,22 @@
 #!/bin/bash
 #
-#   Author  : github.com/luncliff (luncliff@gmail.com)
+# Author  : github.com/luncliff (luncliff@gmail.com)
+# See Also
+#   http://libcxx.llvm.org/docs/BuildingLibcxx.html
 #
 branch=${1:-"release_90"}
 install_prefix=${2:-"/usr"}
-
-echo "----------------------------------------------------------------------"
-echo "                                                                      "
-echo " Build/Install libcxx & libcxxabi                                     "
-echo "  - http://libcxx.llvm.org/docs/BuildingLibcxx.html                   "
-echo "                                                                      "
-echo "  - Branch   : ${branch}                                              "
-echo "  - Path     : ${install_prefix}/{include, lib}                       "
-echo "                                                                      "
-echo "----------------------------------------------------------------------"
-
 provider="https://github.com/llvm-mirror"
+
+echo ""
+echo "llvm:"
+echo " - source  : ${provider}"
+echo " - branch  : ${branch}"
+echo " - install : ${install_prefix}/{include, lib}"
+echo " - target:"
+echo "   - libcxx"
+echo "   - libcxxabi"
+echo ""
 
 # get the packages with specified version
 for repo in "llvm" "libcxx" "libcxxabi"
@@ -36,11 +37,11 @@ do
 done
 
 mkdir -p llvm-build && pushd llvm-build
-cmake -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi" \
-      -DCMAKE_INSTALL_PREFIX="${install_prefix}" \
-      ../llvm
+    cmake ../llvm \
+            -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi" \
+            -DCMAKE_INSTALL_PREFIX="${install_prefix}"
 
-# too many logs. make silent ...
-make install-cxx    2>err-libcxx.txt
-make install-cxxabi 2>err-libcxxabi.txt
+    # too many logs. make silent ...
+    make install-cxx    2>err-libcxx.txt
+    make install-cxxabi 2>err-libcxxabi.txt
 popd
