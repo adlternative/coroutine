@@ -183,6 +183,9 @@ using passive_frame_t = passive_frame;
 
 } // namespace coro
 
+#if defined(__GNUC__)
+/// @todo workaround for `coroutine_traits<std::nullptr_t>`
+#else
 namespace std {
 namespace experimental {
 
@@ -206,5 +209,6 @@ struct coroutine_traits<nullptr_t, P...> {
 
 } // namespace experimental
 } // namespace std
+#endif // __GNUC__
 
 #endif // COROUTINE_PROMISE_AND_RETURN_TYPES_H
