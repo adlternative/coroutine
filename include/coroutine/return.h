@@ -59,7 +59,6 @@ using std::experimental::suspend_never;
 
 /**
  * @brief   no suspend in initial/final + `void` return
- * @see     promise_nn
  * @ingroup Return
  */
 class null_frame_promise {

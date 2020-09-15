@@ -4,6 +4,7 @@
 
 #undef NDEBUG
 #include <cassert>
+#include <memory>
 
 #include <coroutine/channel.hpp>
 #include <coroutine/return.h>

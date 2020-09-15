@@ -156,7 +156,9 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES Clang AND WIN32)
     message(WARNING "clang-cl won't work with <experimental/coroutine>")
 endif()
-
+if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+    message(WARNING "GCC may fails to build current code")
+endif()
 
 
 
@@ -165,6 +167,7 @@ add_library(coroutine_portable
     src/frame.cpp
 )
 
+# todo: remove this
 set_target_properties(coroutine_portable
 PROPERTIES
     WINDOWS_EXPORT_ALL_SYMBOLS true
@@ -214,6 +217,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     PUBLIC
         stdc++
     )
+
 elseif(MSVC)
     # select between C++ Coroutines TS & C++ 20 Coroutines
     if(support_intrinsic_builtin AND has_coroutine)
@@ -241,10 +245,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
             ${ANDROID_STL}
         )
     else()
-        target_link_libraries(coroutine_portable
-        PUBLIC
-            stdc++
-        )
+        # target_link_libraries(coroutine_portable
+        # PUBLIC
+        #     stdc++
+        # )
     endif()
 
 elseif(UNIX OR APPLE)
@@ -424,18 +428,17 @@ endif()
 #
 #   <coroutine/channel.hpp>
 #
-if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
-    message(WARNING "using gcc: the compiler may not work for current code")
+if(TARGET coroutine_portable)
+    create_ctest( channel_close_read            coroutine_portable )
+    create_ctest( channel_close_write           coroutine_portable )
+    create_ctest( channel_ownership_consumer    coroutine_portable ) # workaround: GCC 10.0
+    create_ctest( channel_ownership_producer    coroutine_portable ) # workaround: GCC 10.0
+    create_ctest( channel_read_write_mutex      coroutine_portable )
+    create_ctest( channel_read_write_nolock     coroutine_portable )
+    create_ctest( channel_write_read_mutex      coroutine_portable )
+    create_ctest( channel_write_read_nolock     coroutine_portable )
 endif()
-if(TARGET coroutine_system)
-    create_ctest( channel_close_read            coroutine_system )
-    create_ctest( channel_close_write           coroutine_system )
-    create_ctest( channel_ownership_consumer    coroutine_system )
-    create_ctest( channel_ownership_producer    coroutine_system )
-    create_ctest( channel_read_write_mutex      coroutine_system )
-    create_ctest( channel_read_write_nolock     coroutine_system )
-    create_ctest( channel_write_read_mutex      coroutine_system )
-    create_ctest( channel_write_read_nolock     coroutine_system )
+if(TARGET coroutine_system)    
     create_ctest( channel_select_empty          coroutine_system )
     create_ctest( channel_select_type           coroutine_system )
 if(WIN32)
@@ -487,5 +490,9 @@ if(has_coroutine_ts OR has_coroutine)
     create_sample(sample_05 samples/destroy_handle.cpp)
 
     create_sample(sample_11 samples/russian_roulette.cpp)
-    create_sample(sample_12 samples/max_element.cpp) # fail: GCC 10.0
+    if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+        # the following code failes on GCC
+    else()
+        create_sample(sample_12 samples/max_element.cpp)
+    endif()
 endif()

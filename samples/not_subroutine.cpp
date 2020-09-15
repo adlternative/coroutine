@@ -6,7 +6,7 @@
 #include <coroutine/return.h>
 
 #if defined(__GNUC__)
-// for GCC the return type must be struct.
+// for GCC the coroutine's return type must be `struct`
 using coro::null_frame_t;
 #else
 using null_frame_t = std::nullptr_t;
