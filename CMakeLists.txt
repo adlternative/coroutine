@@ -272,9 +272,9 @@ if(WIN32)
     install(FILES       include/coroutine/windows.h
             DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME}
     )
-    install(FILES       $<TARGET_PDB_FILE:coroutine_portable>
-            DESTINATION bin
-    )
+    # install(FILES       $<TARGET_PDB_FILE:coroutine_portable>
+    #         DESTINATION bin
+    # )
 
 elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
     install(FILES       include/coroutine/linux.h
