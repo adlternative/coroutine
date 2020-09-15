@@ -28,9 +28,11 @@ message(STATUS)
 message(STATUS "cmake:")
 message(STATUS " - ${CMAKE_VERSION}")
 message(STATUS " - ${CMAKE_COMMAND}")
-message(STATUS " - ${CMAKE_TOOLCHAIN_FILE}")
 message(STATUS " - ${CMAKE_GENERATOR}")
 message(STATUS " - ${CMAKE_BUILD_TOOL}")
+if(DEFINED CMAKE_TOOLCHAIN_FILE)
+message(STATUS " - ${CMAKE_TOOLCHAIN_FILE}")
+endif()
 message(STATUS)
 
 
@@ -81,7 +83,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
         check_cxx_compiler_flag("-std=c++2a"          support_latest)
         check_cxx_compiler_flag("-fcoroutines-ts"     support_coroutine)
         check_include_file_cxx("experimental/coroutine" has_coroutine_ts
-            "-std=c++2a"
+            "-std=c++2a -stdlib=libc++"
         )
     endif()
 
@@ -130,7 +132,7 @@ endif()
 if(NOT DEFINED support_intrinsic_builtin)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
     get_filename_component(intrinsic_test_cpp
-                        compiler_test/__builtin.cpp ABSOLUTE)
+                           compiler_test/__builtin.cpp ABSOLUTE)
     try_compile(support_intrinsic_builtin ${CMAKE_BINARY_DIR}/supports
         SOURCES         ${intrinsic_test_cpp}
         # This is a workaround. for some reasone CMAKE_FLAGS has no effect.
@@ -457,29 +459,33 @@ endif()
 #
 # Try to compile the given source code and execute via ctest
 #
-function(basic_sample TEST_NAME SOURCE_FILE)
-    add_executable(${TEST_NAME} ${SOURCE_FILE})
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    target_link_libraries(${TEST_NAME}
+function(create_sample SAMPLE_NAME SOURCE_FILE)
+    add_executable(${SAMPLE_NAME} ${SOURCE_FILE})
+    add_test(NAME ${SAMPLE_NAME} COMMAND ${SAMPLE_NAME})
+    target_link_libraries(${SAMPLE_NAME}
     PRIVATE
         coroutine_portable # PUBLIC compile options for <coroutine>
                            # Currently <coroutine> samples are for latest MSVC
     )
     if(WIN32)
-        target_compile_definitions(${TEST_NAME}
+        target_compile_definitions(${SAMPLE_NAME}
         PRIVATE
             WIN32_LEAN_AND_MEAN NOMINMAX
+        )
+    elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+        target_link_libraries(${SAMPLE_NAME}
+        PUBLIC
+            c++
         )
     endif()
 endfunction()
 
 if(has_coroutine_ts OR has_coroutine)
-    basic_sample(sample_02 samples/not_coroutine.cpp)
-    basic_sample(sample_03 samples/not_subroutine.cpp)
-    basic_sample(sample_04 samples/destroy_return.cpp)
-    basic_sample(sample_05 samples/destroy_handle.cpp)
+    create_sample(sample_02 samples/not_coroutine.cpp)
+    create_sample(sample_03 samples/not_subroutine.cpp)
+    create_sample(sample_04 samples/destroy_return.cpp)
+    create_sample(sample_05 samples/destroy_handle.cpp)
 
-    basic_sample(sample_11 samples/russian_roulette.cpp)
-    basic_sample(sample_12 samples/max_element.cpp)
-
+    create_sample(sample_11 samples/russian_roulette.cpp)
+    create_sample(sample_12 samples/max_element.cpp) # fail: GCC 10.0
 endif()

@@ -6,7 +6,6 @@ C++ 20 Coroutines in Action
 [![Build status](https://ci.appveyor.com/api/projects/status/vpjssf4g6cv4a4ys/branch/master?svg=true)](https://ci.appveyor.com/project/luncliff/coroutine/branch/master)
 [![Build Status](https://travis-ci.com/luncliff/coroutine.svg?branch=dev/2.0)](https://travis-ci.com/luncliff/coroutine)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/38aa16f6d7e046898af3835918c0cd5e)](https://app.codacy.com/app/luncliff/coroutine?utm_source=github.com&utm_medium=referral&utm_content=luncliff/coroutine&utm_campaign=Badge_Grade_Dashboard)
-[![](https://sonarcloud.io/api/project_badges/measure?project=luncliff_coroutine&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=luncliff_coroutine)
 [![](https://sonarcloud.io/api/project_badges/measure?project=luncliff_coroutine&metric=ncloc)](https://sonarcloud.io/dashboard?id=luncliff_coroutine)
 
 ### Purpose of this repository
@@ -61,6 +60,27 @@ pushd coroutine
 popd
 ```
 
+#### Linux
+
+You may have to install libcxx / libcxxabi to use `<experimental/coroutine>`. There is [a bash script for their installation](./scripts/install-libcxx.sh).
+
+Of course you can just [the official guideline for building the libcxx](http://libcxx.llvm.org/docs/BuildingLibcxx.html).
+
+```console
+user@host:/.../coroutine$ sudo bash ./scripts/install-libcxx.sh release_90
+
+llvm:
+ - source  : https://github.com/llvm-mirror
+ - branch  : release_90
+ - install : /usr/{include, lib}
+ - target:
+   - libcxx
+   - libcxxabi
+
+/tmp /.../coroutine
+...
+```
+
 ### Build
 
 For detailed steps, I recommend to see CI configuration files. [.travis.yml](./.travis.yml) will show how to configure with CMake and build.
@@ -76,35 +96,15 @@ mkdir -p build && pushd build
 popd
 ```
 
-### Test
-
-Exploring [test(example) codes](./test) will be helpful. The library uses CTest for its test.
-AppVeyor & Travis CI build log will show the execution of them.
-
 ### Import
 
 > If you want some tool support, please let me know. 
 > I'm willing to learn about it.
 
-#### CMake 3.10+
+#### CMake 3.12+
 
 Expect there is a higher CMake project which uses this library.
-
 The library exports 3 targets.
-
-* coroutine_portable
-  * `<coroutine/frame.h>`
-  * `<coroutine/return.h>`
-  * `<coroutine/channel.hpp>`
-* coroutine_system
-  * requires: coroutine_portable
-  * `<coroutine/windows.h>`
-  * `<coroutine/linux.h>`
-  * `<coroutine/unix.h>`
-  * `<coroutine/pthread.h>`
-* coroutine_net 
-  * requires: coroutine_system
-  * `<coroutine/net.h>`
 
 ```cmake
 cmake_minimum_required(VERSION 3.12)
