@@ -11,7 +11,9 @@ endif()
 if(NOT DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_STANDARD 20)
+if(NOT WIN32)
+    set(CMAKE_CXX_STANDARD 20)
+endif()
 
 message(STATUS "system: ${CMAKE_SYSTEM}")
 message(STATUS "build_type: ${CMAKE_BUILD_TYPE}")
@@ -128,6 +130,8 @@ endif()
 if(NOT support_coroutine)
     message(FATAL_ERROR "The compiler doesn't support C++ Coroutines")
 endif()
+message(STATUS)
+
 # support `__builtin_coro_*`?
 if(NOT DEFINED support_intrinsic_builtin)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
@@ -146,6 +150,7 @@ if(NOT DEFINED support_intrinsic_builtin)
     endif()
     message(STATUS "supports __builtin_coro: ${support_intrinsic_builtin}")
 endif()
+message(STATUS)
 
 
 
@@ -224,11 +229,15 @@ elseif(MSVC)
         target_compile_options(coroutine_portable
         PUBLIC
             /std:c++latest
+        PRIVATE
+            /permissive-
         )
     else()
         target_compile_options(coroutine_portable
         PUBLIC
             /std:c++17 /await
+        PRIVATE
+            /permissive-
         )
     endif()
     target_compile_options(coroutine_portable
